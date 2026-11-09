@@ -1,9 +1,71 @@
 #include <Arduino.h>
 
 
+
+#if 0
+
+
+/**
+ * TCA9548 I2CScanner.ino -- I2C bus scanner for Arduino
+ *
+ * Based on https://playground.arduino.cc/Main/I2cScanner/
+ *
+ */
+
+#include "Wire.h"
+
+#define TCAADDR 0x70
+
+void tcaselect(uint8_t i) {
+  if (i > 7) return;
+ 
+  Wire.beginTransmission(TCAADDR);
+  Wire.write(1 << i);
+  Wire.endTransmission();  
+}
+
+
+// standard Arduino setup()
+void setup()
+{
+    while (!Serial);
+    delay(1000);
+
+    Wire.begin();
+    
+    Serial.begin(115200);
+    Serial.println("\nTCAScanner ready!");
+    
+    for (uint8_t t=0; t<8; t++) {
+      tcaselect(t);
+      Serial.print("TCA Port #"); Serial.println(t);
+
+      for (uint8_t addr = 0; addr<=127; addr++) {
+        if (addr == TCAADDR) continue;
+
+        Wire.beginTransmission(addr);
+        if (!Wire.endTransmission()) {
+          Serial.print("Found I2C 0x");  Serial.println(addr,HEX);
+        }
+      }
+    }
+    Serial.println("\ndone");
+}
+
+void loop() 
+{
+}
+
+
+#else
+
+
 //#include <SPI.h>
 #include <Ethernet.h>
-#include <AmpMaxim.h>
+#include <AmpMux.h>
+
+// right now we are only using the first mux port for the amp, but we could use the other ports for other amps if we wanted to.
+#define MUX_PORT_FOR_AMP            0    
 
 // Enter a MAC address and IP address for your controller below.
 // fake mac address - must be unique on your network
@@ -18,8 +80,8 @@ EthernetServer server(80);
 
 // Global volume variable (0 to 100)
 int gVolume = 0; 
-// need a amp object to set the volume on the amp
-AmpMaxim amp;
+// need a mux object to set the volume on the amp
+AmpMux gMux;
 
 void setup() 
 {
@@ -30,16 +92,16 @@ void setup()
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-  int8_t result = amp.begin(); // Initialize the amplifier
-  if (result != 0) 
+  // Initialize the mux and the amps behind it
+  if (0 != gMux.begin()) 
   {
-    Serial.println("Failed to initialize amplifier");
+    Serial.println("Failed to initialize mux and amps");
   }
   else 
   {
-    Serial.println("Amplifier initialized successfully");
+    Serial.println("Mux and amps initialized successfully");
 
-    gVolume = amp.getCurrentVolume(); // Get the current volume from the amplifier
+    gVolume = gMux.getVolume(MUX_PORT_FOR_AMP); // Get the current volume from the amplifier
     Serial.print("Current volume: ");
     Serial.println(gVolume);
   }
@@ -69,16 +131,19 @@ void loop()
       if (client.available()) 
       {
         char c = client.read();
-        requestStr += c; // Capture the request text
+        requestStr += c; // add another char to the  request text
 
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
-        if (c == '\n' && currentLineIsBlank) 
+
+        if (c == '\n' && (currentLineIsBlank == false)) 
         {
-        
+          // Serial.print(requestStr);
+
           // Check if the request contains a volume adjustment query
           // Format expected: GET /?val=XX HTTP/1.1
+
           if (requestStr.indexOf("GET /?val=") >= 0) 
           {
             int pos = requestStr.indexOf("GET /?val=");
@@ -90,19 +155,17 @@ void loop()
             if (tempVolume < 0) tempVolume = 0;
             if (tempVolume > 100) tempVolume = 100;
             
-            Serial.print("Volume updated to: ");
-            Serial.println(tempVolume);
-
             // we could go set the new volume on the amplifier here, e.g., setAmplifierVolume(volume);
-            if ( true == amp.setVolume(tempVolume) )
+            if ( 0 == gMux.setVolume(MUX_PORT_FOR_AMP, (tempVolume * AMP_MAX_VOLUME) / 100) )
             {
-                gVolume = tempVolume;
+              Serial.print("Volume updated to: ");
+              Serial.println(tempVolume);
+              gVolume = tempVolume;
             }
             else
             {
-                Serial.println("Failed to set volume on amplifier");
-                gVolume = tempVolume;
-
+              Serial.println("Failed to set volume on amplifier");
+              gVolume = tempVolume;
             }
 
           }
@@ -151,7 +214,9 @@ void loop()
         {
           // you're starting a new line
           currentLineIsBlank = true;
-        } else if (c != '\r') 
+        } 
+        
+        if (c != '\r') 
         {
           // you've gotten a character on the current line
           currentLineIsBlank = false;
@@ -166,3 +231,6 @@ void loop()
     Serial.println("Client Disconnected");
   }
 }
+
+
+#endif

@@ -37,13 +37,14 @@ int8_t AmpMaxim::begin( void )
 {
 
     Wire.begin();
-    if ( setVolume( _currentVolume ) == false ) 
+    gAmpInitialized = true;
+    
+   if ( setVolume( _currentVolume ) == false ) 
     {
         gAmpInitialized = false;
         return 1;
     }
     
-    gAmpInitialized = true;
     return 0;
 } 
 
@@ -61,6 +62,9 @@ int8_t AmpMaxim::getCurrentVolume( void )
 // From the web server we can set from 0 to 100, but the amp only takes 0 to 63.  We'll scale it down here.
 // new volume * 63 / 100 = new volume for the amp
 //
+// Can we power down the Maxim amp?  Yes, but we don't have a power down pin connected to the amp.  
+//We could set the volume to 0, but that would still draw some current.  The amp is always on in this design.
+//
 //--------------------------------------------------------------------------------
 bool AmpMaxim::setVolume( int8_t newVolume ) 
 {
@@ -76,7 +80,6 @@ bool AmpMaxim::setVolume( int8_t newVolume )
         newVolume = 0;
     }
     
-
     if ( gAmpInitialized == false )
     {
         return false;
