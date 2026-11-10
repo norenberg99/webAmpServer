@@ -71,12 +71,15 @@ int8_t AmpMux::begin( void )
 
 //--------------------------------------------------------------------------------
 // Return the static variable, which is the last volume setting for this amp
+// Our internalvolume is 0 to 63, but we return a 0 to 100 value for the user
 //--------------------------------------------------------------------------------
 int8_t AmpMux::getVolume( uint8_t ampNum ) 
 {
     if ( ampNum < AMP_TOTAL_NUM )
     {
-        return _ampVolume[ ampNum ];
+
+        // convert 0 to 63 value to a 0 to 100 value for the user
+        return ( _ampVolume[ ampNum ] / AMP_MAX_VOLUME ) * 100;
     }
 
     return 0;
@@ -85,8 +88,10 @@ int8_t AmpMux::getVolume( uint8_t ampNum )
 //--------------------------------------------------------------------------------
 // Setting the volume is very simple! Just write the 6-bit
 // volume to the i2c bus. That's it!
+// 
+// The input is a 0 to 100 value, which we convert to a 0 to 63 value for the amp.
 //--------------------------------------------------------------------------------
-int8_t AmpMux::setVolume( uint8_t ampNum, int8_t newVolume ) 
+int8_t AmpMux::setVolume( uint8_t ampNum, int8_t newVolume0to100 ) 
 {
     int8_t errorCode;
     
@@ -95,20 +100,23 @@ int8_t AmpMux::setVolume( uint8_t ampNum, int8_t newVolume )
         return -1;
     }
 
+    // convert the 0 to 100 value to a 0 to 63 value for the amp
+    int8_t tempVolume0to63 = (newVolume0to100 * AMP_MAX_VOLUME) / 100;
+
     digitalWrite( SHUTDOWN_GPIO, AMP_GOTO_RUNNING );       
 
     // can't be higher than 63 or lower than 0
-    if ( newVolume > AMP_MAX_VOLUME )
+    if ( tempVolume0to63 > AMP_MAX_VOLUME )
     {
-        newVolume = AMP_MAX_VOLUME;
+        tempVolume0to63 = AMP_MAX_VOLUME;
     }
-    else if ( newVolume < 0 ) 
+    else if ( tempVolume0to63 < 0 ) 
     {
-        newVolume = 0;
+        tempVolume0to63 = 0;
     }
     
     // save the new amp volume
-    _ampVolume[ ampNum ] = newVolume;
+    _ampVolume[ ampNum ] = tempVolume0to63;
     
     errorCode = setAllAmpVolumes();
         
@@ -122,6 +130,7 @@ int8_t AmpMux::setAllAmpVolumes( void )
 {
     int8_t errorCode = 0;
     int8_t ampNum;
+    bool bAllVolumesAreZero = true;
     
     // set volume for each amp, most will be 0
     for ( ampNum = 0; ampNum < AMP_TOTAL_NUM; ++ampNum )
@@ -141,6 +150,21 @@ int8_t AmpMux::setAllAmpVolumes( void )
         {
             return -2;
         }
+
+        if ( _ampVolume[ ampNum ] != 0 )
+        {
+            bAllVolumesAreZero = false;
+        }
+    }
+
+    // if all the volumes are zero, then shutdown the amps
+    if ( bAllVolumesAreZero )
+    {
+        digitalWrite( SHUTDOWN_GPIO, AMP_GOTO_SHUTDOWN );       
+    }
+    else
+    {
+        digitalWrite( SHUTDOWN_GPIO, AMP_GOTO_RUNNING );       
     }
 
     return errorCode;

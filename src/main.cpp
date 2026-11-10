@@ -59,19 +59,44 @@ void loop()
 
 #else
 
+/*--------------------------------------------------------------------------------
+    Presents a simple web page with a volume control for one of the 6 different 
+    Class D amps.  An I2C mux sits between the Arduino and the amps.
+
+    The user adjusts the volume using a slider on the web page.  The volume is sent to the Arduino
+    using a GET request.  The Arduino then sets the volume on the amp using the I2C mux.  
+
+    
+    Author: Jon Norenberg
+    Date: 11/9/2026
+--------------------------------------------------------------------------------*/
+
 
 //#include <SPI.h>
 #include <Ethernet.h>
 #include <AmpMux.h>
 
-// right now we are only using the first mux port for the amp, but we could use the other ports for other amps if we wanted to.
-#define MUX_PORT_FOR_AMP            0    
+
+
+// these are the mux ports and what we tell the mux when you want to talk to a specific amp.  
+
+#define MUX_KITCHEN_PORT                0
+#define MUX_MASTER_PORT                 1
+#define MUX_OFFICE_PORT                 2
+#define MUX_PATIO_PORT                  3
+#define MUX_PLAYROOM_PORT               4
+
+
+#define MUX_PORT_FOR_AMP          MUX_OFFICE_PORT
+
 
 // Enter a MAC address and IP address for your controller below.
 // fake mac address - must be unique on your network
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
 // The static IP address will be dependent on your local network:
+// all of our static IP addresses are in the 192.168.1.x range, so we will use
+// our Norenberg router has all static IP addresses after 192.168.1.100
 IPAddress ip(192, 168, 1, 177); // Set a static IP on your network
 
 // Initialize the Ethernet server library
@@ -156,7 +181,7 @@ void loop()
             if (tempVolume > 100) tempVolume = 100;
             
             // we could go set the new volume on the amplifier here, e.g., setAmplifierVolume(volume);
-            if ( 0 == gMux.setVolume(MUX_PORT_FOR_AMP, (tempVolume * AMP_MAX_VOLUME) / 100) )
+            if ( 0 == gMux.setVolume(MUX_PORT_FOR_AMP, tempVolume ) )
             {
               Serial.print("Volume updated to: ");
               Serial.println(tempVolume);
