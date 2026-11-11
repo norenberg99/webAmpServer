@@ -101,7 +101,7 @@ void sendWebPage(EthernetClient &client)
   client.println(F("<style>body{font-family:sans-serif;max-width:400px;margin:20px auto;padding:10px;background:#1e1e1e;color:#fff;}"));
   client.println(F(".box{background:#2d2d2d;padding:15px;margin-bottom:10px;border-radius:8px;}"));
   client.println(F("input[type=range]{width:100%;margin-top:10px;}</style></head><body>"));
-  client.println(F("<h2>House Amplifier VolumeControl</h2>"));
+  client.println(F("<h2>House Amplifier Volume Control</h2>"));
 
   // Dynamically generate the MUX_AMP_COUNT sliders with their current saved values
   for (int i = 0; i < MUX_AMP_COUNT; i++) 
