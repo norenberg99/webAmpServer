@@ -29,6 +29,8 @@ This would be necessary if the house IP numbers change like to 10.0.0.x.
 It is ok to plug in a usb cable to the amp while the 12v power is plugged in.
 The Uno regulator handles using the correct voltage inputs.
 
+Author:
+
 Jon Norenberg
 11/15/2026
 
